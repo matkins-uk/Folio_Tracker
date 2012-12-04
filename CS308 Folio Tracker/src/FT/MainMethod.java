@@ -1,7 +1,8 @@
-
+package FT;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+
 
 public class MainMethod {
 

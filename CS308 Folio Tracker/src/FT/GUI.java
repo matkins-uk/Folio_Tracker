@@ -1,4 +1,6 @@
+package FT;
 
+import static org.mockito.Mockito.mock;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -7,6 +9,7 @@ import java.awt.GridLayout;
 import java.awt.HeadlessException;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -25,11 +28,14 @@ import javax.swing.JTextField;
 import javax.swing.JViewport;
 import javax.swing.table.DefaultTableModel;
 
+
 public class GUI extends JPanel implements Observer {
 	private static final long serialVersionUID = 1L;
 	private JTabbedPane tabbedPane = new JTabbedPane();
-	private DefaultTableModel tableData;
+	private MyTableModel tableData;
 	private JTable table;
+	private JButton add, edit, close, remove, editStock;
+	private ArrayList<IFolio> portfolios = new ArrayList<IFolio>();
 
 	public GUI() {
 		super(new GridLayout(1, 1));
@@ -42,13 +48,12 @@ public class GUI extends JPanel implements Observer {
 		NumberFormat numFor = NumberFormat.getIntegerInstance();
 		JTextField name = new JTextField(40);
 		JTextField numShares = new JFormattedTextField(numFor);
-		Object[] message = { "Folio Name:", name, "Num of Shares:", numShares };
+		Object[] message = { "Stock Name:", name, "Num of Shares:", numShares };
 
 		while (optionChosen != 0) {
 			optionChosen = JOptionPane.showOptionDialog(null, message,
 					"Create Folio", JOptionPane.OK_CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE, null, null, null);
-			Object[] stock = { name.getText(), numShares.getText() };
 
 			if (optionChosen == 2 || optionChosen == -1) {
 				optionChosen = 0;
@@ -68,7 +73,8 @@ public class GUI extends JPanel implements Observer {
 									.showMessageDialog(
 											null,
 											"Invalid Input: Num of Shares must be greater than zero",
-											"Invalid Input", JOptionPane.ERROR_MESSAGE);
+											"Invalid Input",
+											JOptionPane.ERROR_MESSAGE);
 							optionChosen = 1;
 						} else if (optionChosen == 0
 								&& numFor.parse(numShares.getText()).intValue() > 0) {
@@ -78,7 +84,14 @@ public class GUI extends JPanel implements Observer {
 							JTable aTable = (JTable) view.getView();
 							DefaultTableModel model = (DefaultTableModel) aTable
 									.getModel();
-							model.addRow(stock);
+							
+							IStock stock = mock(IStock.class);
+							stock.setNoOfShares(numFor.parse(numShares.getText()).intValue());
+							Object[] stockDetails = { name.getText(), numShares.getText(), stock.getPricePerShare(), stock.getValue(), stock.getHigh(), stock.getLow()};
+							
+							portfolios.get(tabbedPane.getSelectedIndex()).addStock(stock);
+							model.addRow(stockDetails);
+							editStock.setEnabled(true);
 						}
 					} catch (HeadlessException e) {
 						// TODO Auto-generated catch block
@@ -98,7 +111,7 @@ public class GUI extends JPanel implements Observer {
 
 		int optionChosen = 1;
 
-		tableData = new DefaultTableModel();
+		tableData = new MyTableModel();
 
 		tableData.addColumn("Stock Name");
 		tableData.addColumn("Num of Shares");
@@ -113,6 +126,9 @@ public class GUI extends JPanel implements Observer {
 		table.setFillsViewportHeight(true);
 
 		JTextField name = new JTextField(40);
+
+		IFolio folio = mock(IFolio.class);
+		
 		while (optionChosen != 2 && optionChosen != -1
 				&& name.getText().equals("")) {
 			Object[] message = { "Folio Name:", name };
@@ -125,10 +141,14 @@ public class GUI extends JPanel implements Observer {
 						"Invalid Input: No Name entered", "Invalid Input",
 						JOptionPane.ERROR_MESSAGE);
 			} else if (optionChosen == 0 && !name.getText().equals("")) {
-				tabbedPane.addTab(name.getText(), scrollPane);
+				tabbedPane.addTab(name.getText() + " £" + folio.getValue(), scrollPane);
+				folio.setName(name.getText());
+				portfolios.add(folio);
 			}
 		}
 
+		enableButtons();
+		editStock.setEnabled(false);
 	}
 
 	public void createAndShowGUI() {
@@ -160,44 +180,80 @@ public class GUI extends JPanel implements Observer {
 
 		frame.add(this, BorderLayout.CENTER);
 
-		JButton edit = new JButton("Edit Folio Name");
+		edit = new JButton("Edit Folio Name");
 		edit.setName("edit");
 		edit.addActionListener(new FolioListener(this));
 
-		JButton add = new JButton("Add a Stock");
+		add = new JButton("Add a Stock");
 		add.setName("add");
 		add.addActionListener(new FolioListener(this));
 
-		JButton remove = new JButton("Remove Stock");
+		remove = new JButton("Remove Stock");
 		remove.setName("remove");
 		remove.addActionListener(new FolioListener(this));
 
-		JButton close = new JButton("Close Portfolio");
+		close = new JButton("Close Portfolio");
 		close.setName("close");
 		close.addActionListener(new FolioListener(this));
+		
+		editStock = new JButton("Buy/Sell Shares");
+		editStock.setName("editStock");
+		editStock.addActionListener(new FolioListener(this));
 
 		JPanel buttonPanel = new JPanel();
 		frame.add(buttonPanel, BorderLayout.SOUTH);
 		buttonPanel.setLayout(new FlowLayout());
 		buttonPanel.add(edit);
+		buttonPanel.add(editStock);
 		buttonPanel.add(add);
 		buttonPanel.add(remove);
 		buttonPanel.add(close);
+
+		disableButtons();
 
 		frame.pack();
 		frame.setVisible(true);
 	}
 
+	private void enableButtons() {
+		edit.setEnabled(true);
+		remove.setEnabled(true);
+		editStock.setEnabled(true);
+		add.setEnabled(true);
+		close.setEnabled(true);
+	}
+
+	private void disableButtons() {
+		edit.setEnabled(false);
+		remove.setEnabled(false);
+		editStock.setEnabled(false);
+		add.setEnabled(false);
+		close.setEnabled(false);
+	}
+
 	public void closeFolio() {
-		tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
+
+		if (tabbedPane.getSelectedIndex() != -1) {
+			tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
+			portfolios.remove(tabbedPane.getSelectedIndex()+1);
+		}
+		if (tabbedPane.getTabCount() == 0) {
+			disableButtons();
+		}
 	}
 
 	public void removeStock() {
 		JScrollPane pane = (JScrollPane) tabbedPane.getSelectedComponent();
 		JViewport view = pane.getViewport();
 		JTable aTable = (JTable) view.getView();
-		DefaultTableModel model = (DefaultTableModel) aTable.getModel();
-		model.removeRow(aTable.getSelectedRow());
+		MyTableModel model = (MyTableModel) aTable.getModel();
+		if (aTable.getSelectedRow() != -1) {
+			model.removeRow(aTable.getSelectedRow());
+		} else {
+			JOptionPane.showMessageDialog(null,
+					"Invalid Input: No Stock Selected", "Invalid Input",
+					JOptionPane.ERROR_MESSAGE);
+		}
 	}
 
 	public void editFolio() {
@@ -211,13 +267,55 @@ public class GUI extends JPanel implements Observer {
 
 			if (optionChosen == 0) {
 				tabbedPane.setTitleAt(tabbedPane.getSelectedIndex(),
-						name.getText());
+						name.getText() + " £" + portfolios.get(tabbedPane.getSelectedIndex()).getValue());
+				portfolios.get(tabbedPane.getSelectedIndex()).setName(name.getText());
+			} else {
+				optionChosen = 0;
+			}
+		}
+	}
+	
+	public void editStock() {
+		JScrollPane pane = (JScrollPane) tabbedPane.getSelectedComponent();
+		JViewport view = pane.getViewport();
+		JTable aTable = (JTable) view.getView();
+		MyTableModel model = (MyTableModel) aTable.getModel();
+		if (aTable.getSelectedColumn() == 1) {
+			JTextField buy = new JFormattedTextField();
+			JTextField sell = new JFormattedTextField();
+			NumberFormat numFor = NumberFormat.getIntegerInstance();;
+			Object[] message = { "Buy Shares:", buy, "Sell Shares:", sell };
+			JOptionPane.showOptionDialog(null, message,
+					"Create Folio", JOptionPane.OK_CANCEL_OPTION,
+					JOptionPane.INFORMATION_MESSAGE, null, null, null);
+			
+			try {
+				if (numFor.parse(buy.getText()).intValue() <= 0 && numFor.parse(sell.getText()).intValue() <= 0) {
+					JOptionPane.showMessageDialog(null,
+							"Invalid Input: No input entered", "Invalid Input",
+							JOptionPane.ERROR_MESSAGE);
+				}
+				else if (numFor.parse(buy.getText()).intValue() > 0 && numFor.parse(sell.getText()).intValue() > 0) {
+					JOptionPane.showMessageDialog(null,
+							"Invalid Input: Only one field may be entered at a time", "Invalid Input",
+							JOptionPane.ERROR_MESSAGE);
+				}
+				else {
+					portfolios.get(tabbedPane.getSelectedIndex());
+					model.setValueAt(78, aTable.getSelectedRow(), aTable.getSelectedColumn());
+				}
+			} catch (HeadlessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
 
 	@Override
 	public void update(Observable ob, Object obj) {
-
+		tableData.fireTableDataChanged();
 	}
 }
