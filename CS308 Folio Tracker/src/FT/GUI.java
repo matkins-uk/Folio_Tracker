@@ -121,6 +121,8 @@ public class GUI extends JPanel implements Observer {
 		tableData.addColumn("Low");
 
 		table = new JTable(tableData);
+		
+		table.setAutoCreateRowSorter(true);
 
 		JScrollPane scrollPane = new JScrollPane(table);
 		table.setFillsViewportHeight(true);
